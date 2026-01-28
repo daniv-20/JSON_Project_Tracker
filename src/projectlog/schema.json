@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProjectLog Event",
+  "type": "object",
+  "required": [
+    "event_id",
+    "project",
+    "day",
+    "timestamp",
+    "decision_type",
+    "notes",
+    "dataset_ids",
+    "output_dirs",
+    "wip",
+    "deadlines",
+    "tags"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "project": {
+      "type": "string"
+    },
+    "day": {
+      "type": "string",
+      "format": "date"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_type": {
+      "type": "string",
+      "enum": ["analysis", "coding", "writing", "planning", "admin", "note", "result"]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "dataset_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "output_dirs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "wip": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "deadlines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "date"],
+        "properties": {
+          "name": { "type": "string" },
+          "date": { "type": "string", "format": "date" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}
