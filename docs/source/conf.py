@@ -35,6 +35,7 @@ html_static_path = ['_static']
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "renku-sphinx-theme"
 ]
 
 
