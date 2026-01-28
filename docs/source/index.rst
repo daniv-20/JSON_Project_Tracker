@@ -13,3 +13,5 @@ Append-only project activity logging.
 
    api
 
+.. admonition:: This is a note.
+   A note this is. 
