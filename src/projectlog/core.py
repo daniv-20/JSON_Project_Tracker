@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date,  timezone
 import json
 import uuid
 import os
@@ -31,7 +31,7 @@ class ProjectLog:
         self,
         project,
         decision_type,
-        notes,
+        notes = None,
         dataset_ids=None,
         output_dirs=None,
         wip=None,
@@ -47,9 +47,9 @@ class ProjectLog:
             "event_id": str(uuid.uuid4()),
             "project": project,
             "day": day or date.today().isoformat(),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "decision_type": decision_type,
-            "notes": notes,
+            "notes": notes or [],
             "dataset_ids": dataset_ids or [],
             "output_dirs": output_dirs or [],
             "wip": wip or [],
