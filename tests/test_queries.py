@@ -3,9 +3,16 @@ from projectlog.queries import all_wip, datasets_by_project
 
 def test_all_wip():
     events = [
-        {"project": "A", "day": "2026-01-01", "wip": ["x"], "dataset_ids": [], "output_dirs": []}
+        {
+            "project": "A",
+            "day": "2026-01-01",
+            "timestamp": "2026-01-01T12:00:00+00:00",
+            "wip": ["x"],
+            "dataset_ids": [],
+            "output_dirs": [],
+        }
     ]
-    wip = all_wip(events)
+    wip = all_wip(events, since_days=365)
     assert wip[0]["item"] == "x"
 
 

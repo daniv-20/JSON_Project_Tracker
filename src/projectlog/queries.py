@@ -1,38 +1,86 @@
 from pathlib import Path
 import json
-from projectlog.timeutils import parse_iso_date, cutoff_days
-from datetime import date
+from datetime import date, timedelta
+import os
 
-from datetime import date
+DEFAULT_ROOT = os.environ.get(
+    "PROJECTLOG_ROOT",
+    os.path.expanduser("~/project_log/projects")
+)
 
 
-def events_in_date_range(events, start_date=None, end_date=None):
+# ---------------------------------------------------------------------
+# Core loaders
+# ---------------------------------------------------------------------
+
+def load_all(root=DEFAULT_ROOT, projects=None, since_days=None):
     """
-    Return events whose `day` falls within the given date range (inclusive).
+    Load events from project logs, optionally filtered by project
+    and by recency based on event 'day'.
 
     Parameters
     ----------
-    events : list[dict]
-        List of event records.
-    start_date : str | None
-        ISO date string (YYYY-MM-DD). If None, no lower bound.
-    end_date : str | None
-        ISO date string (YYYY-MM-DD). If None, no upper bound.
+    root : str or Path
+        Root directory containing project JSON files.
+    projects : str | list[str] | None
+        Project name or names to load.
+    since_days : int | None
+        Only include events whose 'day' is within the last N days.
 
     Returns
     -------
     list[dict]
-        Events within the specified date range.
+        Event records.
     """
-    def to_date(d):
-        return date.fromisoformat(d)
+    root = Path(root)
 
-    start = to_date(start_date) if start_date else None
-    end = to_date(end_date) if end_date else None
+    if isinstance(projects, str):
+        projects = {projects}
+    elif projects is not None:
+        projects = set(projects)
+
+    cutoff_day = (
+        date.today() - timedelta(days=since_days)
+        if since_days is not None
+        else None
+    )
+
+    events = []
+
+    for path in root.glob("*.json"):
+        project_name = path.stem
+
+        if projects and project_name not in projects:
+            continue
+
+        with open(path) as f:
+            data = json.load(f)
+
+        for e in data["events"]:
+            if cutoff_day:
+                event_day = date.fromisoformat(e["day"])
+                if event_day < cutoff_day:
+                    continue
+
+            events.append(e)
+
+    return events
+
+
+# ---------------------------------------------------------------------
+# Time-based queries
+# ---------------------------------------------------------------------
+
+def events_in_date_range(events, start_date=None, end_date=None):
+    """
+    Return events whose 'day' falls within the given date range (inclusive).
+    """
+    start = date.fromisoformat(start_date) if start_date else None
+    end = date.fromisoformat(end_date) if end_date else None
 
     out = []
     for e in events:
-        event_day = to_date(e["day"])
+        event_day = date.fromisoformat(e["day"])
 
         if start and event_day < start:
             continue
@@ -44,30 +92,16 @@ def events_in_date_range(events, start_date=None, end_date=None):
     return out
 
 
-
-def load_all(root, since_days=90):
-    events = []
-    cutoff = cutoff_days(since_days) if since_days else None
-
-    for path in Path(root).glob("*.json"):
-        with open(path) as f:
-            for e in json.load(f):
-                if cutoff:
-                    event_time = parse_iso_date(e["timestamp"])
-                    if event_time < cutoff:
-                        continue
-                events.append(e)
-
-    return events
-
-
 def all_wip(events, since_days=14):
-    cutoff = cutoff_days(since_days)
+    """
+    Return WIP items from events whose 'day' is within the last N days.
+    """
+    cutoff_day = date.today() - timedelta(days=since_days)
 
     out = []
     for e in events:
-        event_time = parse_iso_date(e["timestamp"])
-        if event_time < cutoff:
+        event_day = date.fromisoformat(e["day"])
+        if event_day < cutoff_day:
             continue
 
         for item in e.get("wip", []):
@@ -77,9 +111,13 @@ def all_wip(events, since_days=14):
                 "timestamp": e["timestamp"],
                 "item": item,
             })
+
     return out
 
 
+# ---------------------------------------------------------------------
+# Aggregations
+# ---------------------------------------------------------------------
 
 def datasets_by_project(events):
     out = {}
@@ -97,11 +135,34 @@ def outputs_by_project(events):
     return {k: sorted(v) for k, v in out.items()}
 
 
+# ---------------------------------------------------------------------
+# Last-activity logic
+# ---------------------------------------------------------------------
+
 def last_event_by_project(events):
+    """
+    Return the most recent event per project,
+    ordered by (day, timestamp).
+    """
     out = {}
+
     for e in events:
         proj = e["project"]
-        if proj not in out or e["timestamp"] > out[proj]["timestamp"]:
-            out[proj] = e
-    return out
 
+        key = (
+            date.fromisoformat(e["day"]),
+            e["timestamp"],
+        )
+
+        if proj not in out:
+            out[proj] = e
+        else:
+            prev = out[proj]
+            prev_key = (
+                date.fromisoformat(prev["day"]),
+                prev["timestamp"],
+            )
+            if key > prev_key:
+                out[proj] = e
+
+    return out
